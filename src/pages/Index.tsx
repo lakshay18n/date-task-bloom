@@ -167,6 +167,16 @@ const Index = () => {
     }
   };
 
+  // Transform tasks for Calendar component
+  const calendarTasks = Object.keys(tasks).reduce((acc, dateKey) => {
+    acc[dateKey] = tasks[dateKey].map(task => ({
+      id: task.id,
+      text: task.title,
+      completed: task.completed
+    }));
+    return acc;
+  }, {} as Record<string, Array<{id: string, text: string, completed: boolean}>>);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -207,13 +217,13 @@ const Index = () => {
           <div className="flex-1">
             <Calendar 
               onDateClick={handleDateClick}
-              tasks={tasks}
+              tasks={calendarTasks}
             />
           </div>
 
           {/* Side Panel */}
           <div className="lg:w-80">
-            <SidePanel tasks={tasks} />
+            <SidePanel tasks={calendarTasks} />
           </div>
         </div>
 
