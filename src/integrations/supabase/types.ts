@@ -9,7 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      task: {
+      tasks: {
         Row: {
           completed: boolean
           created_at: string

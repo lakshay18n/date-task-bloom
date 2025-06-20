@@ -44,15 +44,21 @@ const Index = () => {
 
   const fetchTasks = async () => {
     try {
+      console.log('Fetching tasks for user:', user?.id);
       const { data, error } = await supabase
-        .from('task')
+        .from('tasks')
         .select('*')
         .eq('user_id', user?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        throw error;
+      }
+
+      console.log('Fetched tasks:', data);
 
       const tasksGrouped: Record<string, Task[]> = {};
-      data.forEach((task) => {
+      data?.forEach((task) => {
         const dateKey = task.date;
         if (!tasksGrouped[dateKey]) {
           tasksGrouped[dateKey] = [];
@@ -67,10 +73,12 @@ const Index = () => {
       });
 
       setTasks(tasksGrouped);
+      console.log('Grouped tasks:', tasksGrouped);
     } catch (error: any) {
+      console.error('Failed to load tasks:', error);
       toast({
         title: "Error",
-        description: "Failed to load tasks",
+        description: "Failed to load tasks: " + error.message,
         variant: "destructive",
       });
     } finally {
@@ -92,6 +100,8 @@ const Index = () => {
   const handleTasksUpdate = async (date: Date, updatedTasks: Array<{id: string, text: string, completed: boolean}>) => {
     const dateKey = format(date, 'yyyy-MM-dd');
     
+    console.log('Updating tasks for date:', dateKey, updatedTasks);
+    
     // Convert to our Task format
     const formattedTasks: Task[] = updatedTasks.map(task => ({
       id: task.id,
@@ -109,16 +119,21 @@ const Index = () => {
     // Sync with database
     try {
       // First, delete existing tasks for this date
-      await supabase
-        .from('task')
+      const { error: deleteError } = await supabase
+        .from('tasks')
         .delete()
         .eq('user_id', user?.id)
         .eq('date', dateKey);
 
+      if (deleteError) {
+        console.error('Error deleting existing tasks:', deleteError);
+        throw deleteError;
+      }
+
       // Then insert all tasks for this date
       if (formattedTasks.length > 0) {
         const tasksToInsert = formattedTasks.map(task => ({
-          id: parseInt(task.id),
+          id: task.id === 'temp' ? undefined : parseInt(task.id), // Let database generate ID for new tasks
           user_id: user?.id,
           title: task.title,
           description: task.description || null,
@@ -126,16 +141,27 @@ const Index = () => {
           completed: task.completed
         }));
 
-        const { error } = await supabase
-          .from('task')
+        console.log('Inserting tasks:', tasksToInsert);
+
+        const { error: insertError } = await supabase
+          .from('tasks')
           .insert(tasksToInsert);
 
-        if (error) throw error;
+        if (insertError) {
+          console.error('Error inserting tasks:', insertError);
+          throw insertError;
+        }
       }
+
+      toast({
+        title: "Success",
+        description: "Tasks saved successfully",
+      });
     } catch (error: any) {
+      console.error('Failed to save tasks:', error);
       toast({
         title: "Error",
-        description: "Failed to save tasks",
+        description: "Failed to save tasks: " + error.message,
         variant: "destructive",
       });
       // Refresh tasks to get the correct state
