@@ -28,7 +28,7 @@ const TaskModal = ({ date, isOpen, onClose, onTasksUpdate, tasks }: TaskModalPro
   const addTask = () => {
     if (newTaskText.trim()) {
       const newTask: Task = {
-        id: `temp_${Date.now()}`, // Use temporary ID that will be replaced by database
+        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // More unique temporary ID
         text: newTaskText.trim(),
         completed: false
       };

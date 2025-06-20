@@ -132,14 +132,26 @@ const Index = () => {
 
       // Then insert all tasks for this date
       if (formattedTasks.length > 0) {
-        const tasksToInsert = formattedTasks.map(task => ({
-          id: task.id === 'temp' ? undefined : parseInt(task.id), // Let database generate ID for new tasks
-          user_id: user?.id,
-          title: task.title,
-          description: task.description || null,
-          date: dateKey,
-          completed: task.completed
-        }));
+        const tasksToInsert = formattedTasks.map(task => {
+          // Only include id if it's not a temporary ID
+          const taskData: any = {
+            user_id: user?.id,
+            title: task.title,
+            description: task.description || null,
+            date: dateKey,
+            completed: task.completed
+          };
+          
+          // Only add id if it's not a temporary ID (starts with "temp_")
+          if (!task.id.startsWith('temp_')) {
+            const numericId = parseInt(task.id);
+            if (!isNaN(numericId)) {
+              taskData.id = numericId;
+            }
+          }
+          
+          return taskData;
+        });
 
         console.log('Inserting tasks:', tasksToInsert);
 
@@ -152,6 +164,9 @@ const Index = () => {
           throw insertError;
         }
       }
+
+      // Refresh tasks to get the correct IDs from database
+      await fetchTasks();
 
       toast({
         title: "Success",
