@@ -48,7 +48,8 @@ const Index = () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('user_id', user?.id);
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching tasks:', error);
@@ -102,23 +103,8 @@ const Index = () => {
     
     console.log('Updating tasks for date:', dateKey, updatedTasks);
     
-    // Convert to our Task format
-    const formattedTasks: Task[] = updatedTasks.map(task => ({
-      id: task.id,
-      title: task.text,
-      completed: task.completed,
-      date: dateKey
-    }));
-
-    // Update local state immediately
-    setTasks(prev => ({
-      ...prev,
-      [dateKey]: formattedTasks
-    }));
-
-    // Sync with database
     try {
-      // First, delete existing tasks for this date
+      // First, delete all existing tasks for this date
       const { error: deleteError } = await supabase
         .from('tasks')
         .delete()
@@ -130,28 +116,15 @@ const Index = () => {
         throw deleteError;
       }
 
-      // Then insert all tasks for this date
-      if (formattedTasks.length > 0) {
-        const tasksToInsert = formattedTasks.map(task => {
-          // Only include id if it's not a temporary ID
-          const taskData: any = {
-            user_id: user?.id,
-            title: task.title,
-            description: task.description || null,
-            date: dateKey,
-            completed: task.completed
-          };
-          
-          // Only add id if it's not a temporary ID (starts with "temp_")
-          if (!task.id.startsWith('temp_')) {
-            const numericId = parseInt(task.id);
-            if (!isNaN(numericId)) {
-              taskData.id = numericId;
-            }
-          }
-          
-          return taskData;
-        });
+      // Then insert all tasks for this date (if any)
+      if (updatedTasks.length > 0) {
+        const tasksToInsert = updatedTasks.map(task => ({
+          user_id: user?.id,
+          title: task.text,
+          description: null,
+          date: dateKey,
+          completed: task.completed
+        }));
 
         console.log('Inserting tasks:', tasksToInsert);
 
@@ -165,7 +138,7 @@ const Index = () => {
         }
       }
 
-      // Refresh tasks to get the correct IDs from database
+      // Refresh tasks to get the latest data with correct IDs
       await fetchTasks();
 
       toast({
@@ -179,7 +152,7 @@ const Index = () => {
         description: "Failed to save tasks: " + error.message,
         variant: "destructive",
       });
-      // Refresh tasks to get the correct state
+      // Refresh tasks to get the correct state in case of error
       fetchTasks();
     }
   };
